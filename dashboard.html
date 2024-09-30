@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Metadados -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Números Denunciados</title>
+    <!-- Estilos -->
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e; /* Mantém a cor original de fundo */
+            color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            width: 80%;
+            max-width: 1200px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #4CAF50;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            color: white;
+        }
+        td {
+            background-color: #2e2e2e;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+
+        /* Estilos da Paginação */
+        #pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        #pagination button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 2px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #pagination button.active {
+            background-color: #FFD700; /* Nova cor para o botão ativo (dourado) */
+            color: #1e1e1e; /* Cor do texto do botão ativo */
+        }
+        #pagination button.disabled {
+            background-color: #9E9E9E;
+            cursor: default;
+        }
+        #pagination button:hover:not(.disabled):not(.active) {
+            background-color: #3e8e41;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Números Denunciados</h1>
+
+        <!-- Caixa de filtro -->
+        <input type="text" id="filterInput" placeholder="Filtrar por número ou motivo" onkeyup="filterTable()">
+
+        <!-- Tabela de Números Denunciados -->
+        <table id="denunciaTable">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Motivo da Denúncia</th>
+                </tr>
+            </thead>
+            <tbody id="denunciaTableBody">
+                <!-- Os dados serão inseridos aqui via JavaScript -->
+            </tbody>
+        </table>
+
+        <!-- Controles de Paginação -->
+        <div id="pagination"></div>
+
+        <a href="index.html">Voltar para a página inicial</a>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let data = []; // Dados originais recebidos do servidor
+        let filteredData = []; // Dados após o filtro
+
+        // Função para carregar os dados do back-end
+        function loadTableData() {
+            fetch('http://localhost:8000/telefones')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao obter os dados');
+                    }
+                    return response.json();
+                })
+                .then(fetchedData => {
+                    data = fetchedData.reverse(); // Reverte os dados para mostrar os mais recentes primeiro
+                    filteredData = data; // Inicialmente, sem filtro
+                    displayPage(1);
+                    setupPagination();
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao carregar os números denunciados.');
+                });
+        }
+
+        // Função para exibir os dados de uma página específica
+        function displayPage(page) {
+            currentPage = page;
+            const tbody = document.getElementById('denunciaTableBody');
+            tbody.innerHTML = ''; // Limpa as linhas existentes
+
+            const startIndex = (page - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const paginatedData = filteredData.slice(startIndex, endIndex);
+
+            if (paginatedData.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 2;
+                td.style.textAlign = 'center';
+                td.textContent = 'Nenhum número denunciado encontrado.';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            } else {
+                paginatedData.forEach(item => {
+                    const tr = document.createElement('tr');
+
+                    const tdNumero = document.createElement('td');
+                    tdNumero.textContent = item.numero;
+                    tr.appendChild(tdNumero);
+
+                    const tdMotivo = document.createElement('td');
+                    tdMotivo.textContent = item.tipo_denuncia;
+                    tr.appendChild(tdMotivo);
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            setupPagination(); // Atualiza os botões de paginação
+        }
+
+        // Função para configurar os controles de paginação
+        function setupPagination() {
+            const paginationElement = document.getElementById('pagination');
+            paginationElement.innerHTML = ''; // Limpa a paginação existente
+
+            const pageCount = Math.ceil(filteredData.length / rowsPerPage);
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = startPage + maxVisiblePages - 1;
+
+            if (endPage > pageCount) {
+                endPage = pageCount;
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            // Botão para primeira página
+            const firstPageBtn = document.createElement('button');
+            firstPageBtn.textContent = '<<';
+            if (currentPage === 1) {
+                firstPageBtn.classList.add('disabled');
+                firstPageBtn.disabled = true;
+            }
+            firstPageBtn.addEventListener('click', () => {
+                displayPage(1);
+            });
+            paginationElement.appendChild(firstPageBtn);
+
+            // Botão para página anterior
+            const prevPageBtn = document.createElement('button');
+            prevPageBtn.textContent = '<';
+            if (currentPage === 1) {
+                prevPageBtn.classList.add('disabled');
+                prevPageBtn.disabled = true;
+            }
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    displayPage(currentPage - 1);
+                }
+            });
+            paginationElement.appendChild(prevPageBtn);
+
+            // Botões de páginas
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = paginationButton(i);
+                paginationElement.appendChild(btn);
+            }
+
+            // Botão para próxima página
+            const nextPageBtn = document.createElement('button');
+            nextPageBtn.textContent = '>';
+            if (currentPage === pageCount || pageCount === 0) {
+                nextPageBtn.classList.add('disabled');
+                nextPageBtn.disabled = true;
+            }
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage < pageCount) {
+                    displayPage(currentPage + 1);
+                }
+            });
+            paginationElement.appendChild(nextPageBtn);
+
+            // Botão para última página
+            const lastPageBtn = document.createElement('button');
+            lastPageBtn.textContent = '>>';
+            if (currentPage === pageCount || pageCount === 0) {
+                lastPageBtn.classList.add('disabled');
+                lastPageBtn.disabled = true;
+            }
+            lastPageBtn.addEventListener('click', () => {
+                displayPage(pageCount);
+            });
+            paginationElement.appendChild(lastPageBtn);
+        }
+
+        // Função para criar um botão de paginação
+        function paginationButton(page) {
+            const button = document.createElement('button');
+            button.textContent = page;
+
+            if (currentPage === page) button.classList.add('active');
+
+            button.addEventListener('click', function() {
+                displayPage(page);
+            });
+
+            return button;
+        }
+
+        // Função de filtro
+        function filterTable() {
+            const input = document.getElementById('filterInput');
+            const filter = input.value.toLowerCase();
+
+            filteredData = data.filter(item => {
+                const numberText = item.numero.toLowerCase();
+                const reasonText = item.tipo_denuncia ? item.tipo_denuncia.toLowerCase() : '';
+                return numberText.includes(filter) || reasonText.includes(filter);
+            });
+
+            currentPage = 1; // Reinicia para a primeira página
+            displayPage(currentPage);
+        }
+
+        // Chama a função ao carregar a página
+        window.onload = loadTableData;
+    </script>
+
+</body>
+</html>
+

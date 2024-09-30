@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Cabeçalho igual ao do index.html -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Denunciar um Número</title>
+    <!-- Seus estilos aqui -->
+    <style>
+        /* Mesmos estilos do index.html */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 40px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</head>
+<body>
+
+    <div class="container">
+        <h1>Denunciar um Número</h1>
+        <form id="denunciaForm">
+            <input type="text" id="numeroInput" placeholder="Número de Telefone" required>
+            <select id="motivoSelect" required>
+                <option value="">Selecione o Motivo da Denúncia</option>
+                <option value="Fraude">Fraude</option>
+                <option value="Golpe">Golpe</option>
+                <option value="Spam">Spam</option>
+                <!-- Adicione mais opções conforme necessário -->
+            </select>
+            <button type="submit">Denunciar</button>
+        </form>
+        <a href="index.html">Voltar para a página inicial</a>
+    </div>
+
+    <script>
+        document.getElementById('denunciaForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Impede o envio padrão do formulário
+
+            const numero = document.getElementById('numeroInput').value;
+            const tipo_denuncia = document.getElementById('motivoSelect').value;
+
+            fetch('http://localhost:8000/telefones', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ numero: numero, tipo_denuncia: tipo_denuncia }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json(); // Agora podemos esperar uma resposta JSON
+                } else {
+                    // Ler o corpo da resposta para obter a mensagem de erro
+                    return response.json().then(errData => {
+                        throw new Error(errData.error || 'Erro desconhecido no servidor.');
+                    });
+                }
+            })
+            .then(data => {
+                alert(data.message); // Exibe a mensagem de sucesso retornada pelo servidor
+                // Redireciona para o dashboard
+                window.location.href = 'dashboard.html';
+            })
+            .catch((error) => {
+                console.error('Erro:', error);
+                alert('Erro ao registrar a denúncia. Numero ja existente.');
+            });
+        });
+    </script>
+
+</body>
+</html>
+
